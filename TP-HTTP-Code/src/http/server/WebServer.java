@@ -15,13 +15,47 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * WebServer est une classe qui représente (comme son nom l'indique) un serveur web. 
+ * Ce dernier est capable de gérer différentes requêtes (GET, PUT, DELETE ...) et dispose 
+ * d'un ensemble de ressources dans un dossier séparé.
+ * 
+ * @author Killian OECHSLIN
+ * @author Thomas MIGNOT
+ */
 public class WebServer {
 
+  /**
+   * Socket de connexion du client.
+   */
   static Socket remote;
+  
+  /**
+   * Variable permettant de lire la requête envoyée 
+   * par le client.
+   */
   static BufferedReader in;
+
+  /**
+   * Variable permettant d'envoyer la réponse au client.
+   */
   static PrintWriter out;
+
+  /**
+   * Numéro de port du serveur.
+   */
   static int port = 3000;
 
+  /**
+   * Chemin vers les ressources du serveur.
+   */
+  static String ressourcesPath;
+
+  /**
+   * Lance le serveur. Ce dernier est alors capable de recevoir 
+   * une connexion d'un client, de lire la requête, d'y répondre (selon 
+   * son type) et de fermer la connexion avec le client.
+   */
   protected void start() {
     ServerSocket s;
 
@@ -30,7 +64,7 @@ public class WebServer {
     try {
       // Création de la socket d'écoute
       s = new ServerSocket(port);
-    } catch (Exception e) {
+    } catch (IOException e) {
       System.out.println("Error: " + e);
       return;
     }
@@ -40,6 +74,7 @@ public class WebServer {
       try {
         // Attend une connexion
         remote = s.accept();
+
         // remote est connecté
         System.out.println("Connection, sending data.");
         in = new BufferedReader(new InputStreamReader(remote.getInputStream()));
@@ -48,11 +83,17 @@ public class WebServer {
         String line;
 
         // Récupération des headers
-        while(!(line = in.readLine()).isBlank()) {
+        while((line = in.readLine()) != null && !line.isBlank()) {
           requestBuilder.append(line + "\r\n");
-        }        
+        }
 
         String request = requestBuilder.toString();
+
+        if (request.isBlank() || request == null) {
+          remote.close();
+          return;
+        }
+
         String[] requestSplit = request.split("\r\n");
         String[] requestLine = requestSplit[0].split(" ");
         String method = requestLine[0];
@@ -102,36 +143,65 @@ public class WebServer {
           case "HEAD":
             HEADRequest(path, remote);
             break;
+          default:
+            // Pour les méthodes non implémentées
+            sendResponse(remote, "501 Not Implemented", null, null, null, method);
+            break;
         }
 
         remote.close();
         
-      } catch (Exception e) {
+      } catch (IOException e) {
         System.out.println("Error : " + e);
       }
     }
   }
 
+  /**
+   * Permet de trouver le type du contenu d'un fichier.
+   * @param filePath Le chemin vers le fichier dont on veut trouver le type.
+   * @return Le type de contenu du fichier.
+   * @throws IOException
+   */
   private static String guessContentType(Path filePath) throws IOException {
     return Files.probeContentType(filePath);
   }
 
+  /**
+   * Permet de trouver le chemin (sur le serveur) vers l'une des 
+   * ressources du serveur.
+   * @param path Le chemin de la ressource récupéré dans la requête.
+   * @return Le chemin (sur le serveur) vers la ressource cherchée.
+   */
   private static Path getFilePath(String path) {
     if ("/".equals(path)) {
         return Paths.get("/");
     }
-    return Paths.get("./http/ressources", path);
+    return Paths.get(ressourcesPath, path.replaceAll("%20", " "));
   }
 
-  private static void sendResponse(Socket client, String status, String contentType, byte[] content, String requestType) throws IOException {
+  /**
+   * Envoyie la réponse au client suite à sa requête.
+   * @param client Le client visé.
+   * @param status Le code de retour HTTP.
+   * @param contentType Le type de la réponse.
+   * @param content Le corps de la réponse.
+   * @param contentLocation L'emplacement de la ressource.
+   * @param requestType Le type de requête.
+   * @throws IOException
+   */
+  private static void sendResponse(Socket client, String status, String contentType, byte[] content, String contentLocation, String requestType) throws IOException {
     PrintWriter pwOut = new PrintWriter(client.getOutputStream());
     BufferedOutputStream buffOut = new BufferedOutputStream(client.getOutputStream());
 
     pwOut.println("HTTP/1.1 " + status);
-    if (requestType.equals("GET") || requestType.equals("HEAD")) {
+    if (requestType.equals("GET") || (requestType.equals("HEAD") && content != null)) {
       pwOut.println("ContentType: " + contentType);
       pwOut.println("Content-Encoding: UTF-8");
       pwOut.println("Content-Length: " + content.length);
+    }
+    if (requestType.equals("PUT")) {
+      pwOut.println("Content-Location: " + contentLocation);
     }
     pwOut.println("Server: WebServer Java (Killian)");
     pwOut.println("Connection: close");
@@ -142,10 +212,15 @@ public class WebServer {
       buffOut.write(content, 0, content.length);
       buffOut.flush();
     }
-
     client.close();
   }
-
+  
+  /**
+   * Méthode qui permet d'effectuer une requête HTTP GET.
+   * @param path Le chemin de la ressource visée.
+   * @param client Le client effectuant la demande.
+   * @throws IOException
+   */
   private static void GETRequest(String path, Socket client) throws IOException {
 
     if (path.equals("/")) {
@@ -154,25 +229,31 @@ public class WebServer {
       File directoryPath = new File("./http/ressources");
       String[] files = directoryPath.list();
       for (String file : files) {
-          res += "<li><a href=\"/" + file + "\">" + file + "</a>" + "</li>";
+          res += "<li><a href=\"/" + file.replaceAll(" ", "%20") + "\">" + file + "</a>" + "</li>";
       }
       res += "</ul>";
-      sendResponse(client, "200 OK", "text/html", res.getBytes(), "GET");
+      sendResponse(client, "200 OK", "text/html", res.getBytes(), null, "GET");
     }
     else {
         Path filePath = getFilePath(path);
         if (Files.exists(filePath)) {
             // Le fichier existe
             String contentType = guessContentType(filePath);
-            sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath), "GET");
+            sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath), null, "GET");
         } else {
             // Le fichier n'existe pas : 404
             byte[] notFoundContent = "<h1>Not found :(</h1>".getBytes();
-            sendResponse(client, "404 Not Found", "text/html", notFoundContent, "GET");
+            sendResponse(client, "404 Not Found", "text/html", notFoundContent, null, "GET");
         }
     }
   }
 
+  /**
+   * Méthode qui permet d'effectuer une requête HTTP DELETE.
+   * @param path Le chemin de la ressource à supprimer.
+   * @param client Le client effectuant la demande.
+   * @throws IOException
+   */
   private static void DELETERequest(String path, Socket client) throws IOException {
 
     Path filePath = getFilePath(path);
@@ -182,27 +263,30 @@ public class WebServer {
         File fileToDelete = filePath.toFile();
 
         if(fileToDelete.delete()) {
-            byte[] deleteConfirmation = "{\"success\": \"true\"}".getBytes();
-            sendResponse(client, "200 OK", "application/json", deleteConfirmation, "DELETE");
+            sendResponse(client, "204 No Content", null, null, null, "DELETE");
         } else {
-            byte[] deleteFailure = "{\"success\": \"false\"}".getBytes();
-            sendResponse(client, "500 Internal Server Error", "application/json", deleteFailure, "DELETE");
+            sendResponse(client, "500 Internal Server Error", null, null, null, "DELETE");
         }
     }
     else{
-        byte[] fileNotFound = "{\"success\": \"false\"}".getBytes();
-        sendResponse(client, "404 Not Found", "application/json", fileNotFound, "DELETE");
+        sendResponse(client, "404 Not Found", null, null, null, "DELETE");
     }
   }
 
+  /**
+   * Méthode qui permet d'effectuer une requête HTTP PUT.
+   * @param path Le chemin de la ressource à modifer/créer.
+   * @param newContent Le nouveau contenu.
+   * @param client Le client effectuant la demande.
+   * @throws IOException
+   */
   private static void PUTRequest(String path,String newContent,Socket client) throws IOException {
 
     Path filePath = getFilePath(path);
-
     String statusCode = "";
 
     if (Files.exists(filePath)) {
-      statusCode = "200 OK";
+      statusCode = "204 No Content";
     } else {
       statusCode = "201 Created";
     }
@@ -212,13 +296,19 @@ public class WebServer {
     try {
         fWriter.append(newContent);
         fWriter.flush();
-        sendResponse(client, statusCode, null, null, "PUT");
+        sendResponse(client, statusCode, null, null, path, "PUT");
     } catch (Exception e) {
         System.out.println("Error when writing to file : " + e);
-        sendResponse(client, "500 Internal Server Error", null, null, "PUT");
+        sendResponse(client, "500 Internal Server Error", null, null, null, "PUT");
     }
   }
 
+  /**
+   * Méthode qui permet d'effectuer une requête HTTP HEAD.
+   * @param path Le chemin de la ressource visée.
+   * @param client Le client effectuant la demande.
+   * @throws IOException
+   */
   private static void HEADRequest(String path, Socket client) throws IOException {
     // Méthode similaire à GETRequest, mais on n'envoie pas le body
     if (path.equals("/")) {
@@ -229,23 +319,31 @@ public class WebServer {
           res += "<li><a href=\"/" + file + "\">" + file + "</a>" + "</li>";
       }
       res += "</ul>";
-      sendResponse(client, "200 OK", "text/html", res.getBytes(), "HEAD");
+      sendResponse(client, "204 No Content", "text/html", res.getBytes(), null, "HEAD");
     }
     else {
         Path filePath = getFilePath(path);
         if (Files.exists(filePath)) {
             // Le fichier existe
             String contentType = guessContentType(filePath);
-            sendResponse(client, "200 OK", contentType, Files.readAllBytes(filePath), "HEAD");
+            sendResponse(client, "204 No Content", contentType, Files.readAllBytes(filePath), null, "HEAD");
         } else {
             // Le fichier n'existe pas : 404
-            byte[] notFoundContent = "<h1>Not found :(</h1>".getBytes();
-            sendResponse(client, "404 Not Found", "text/html", notFoundContent, "HEAD");
+            sendResponse(client, "404 Not Found", null, null, null, "HEAD");
         }
     }
   }
-
+  
+  /**
+   * Méthode main qui permet de démarrer le serveur web.
+   * @param args Contient le chemin vers le dossier des ressources du serveur.
+   */
   public static void main(String args[]) {
+    if (args.length != 1) {
+      System.out.println("Usage: java WebServer <Ressources path>");
+      System.exit(1);
+    }
+    ressourcesPath = args[0];
     WebServer ws = new WebServer();
     ws.start();
   }
