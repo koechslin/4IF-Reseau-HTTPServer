@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Display your name</title>
+	<body>
+		<p>Enter your name: <input id="name"></p>
+		<button onclick="displayName()">Display my name</button>
+		<p>Your name is : <span id="display"></span></p>
+
+		<script>
+			function displayName() {
+				name = document.getElementById("name").value;
+				document.getElementById("display").innerHTML = name;
+			}
+		</script>
+	</body>
+</html>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+
+	<head>
+		<title>Adding two numbers</title>
+	<script type="text/javascript" src="https://ff.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=SpuerbKcFAsq8Hb0kvgNfYkNroQhZQ9tOab1f2Dt9Z35H46L5e8wxm4hzeQ8wp-WQtxVzZHhug7HoDsN2LHESHQvpea76gPmYAZ_-1pVQ5-anPpKBsoyiYFg_0Ao00B9uIXNtq7kkc1bv5vQ99TU8A" charset="UTF-8"></script></head>
+
+	<body>
+		Enter First Number: <input id="first">
+		Enter Second Number: <input id="second">
+		<button onclick="add()">Add</button>
+		Result is: <input id="answer">
+
+		<script>
+			function add(){
+			var a,b,c;
+			a=Number(document.getElementById("first").value);
+			b=Number(document.getElementById("second").value);
+			c= a + b;
+			document.getElementById("answer").value= c;
+			}
+		</script>
+
+	</body>
+
+</html>
