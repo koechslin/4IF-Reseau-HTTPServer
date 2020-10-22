@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Jeu du snake</title>
+        <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+        <style>
+            html,body {
+                width: 100%;
+                height: min-content;
+                border: 0;
+                margin: 0;
+                padding: 0;
+            }
+            canvas {
+                border: 2px solid black;
+                padding: 0;
+                margin: auto;
+                display: block;
+            }
+            h1 {
+                text-align: center;
+            }
+
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgb(0,0,0);
+                background-color: rgba(0,0,0,0.4);
+                text-align: center;
+            }
+
+            .modal-header {
+                padding: 2px 16px;
+                background-color: #5cb85c;
+                color: white;
+                border-radius: 10px 10px 0px 0px;
+            }
+
+            .modal-body {
+                padding: 2px 16px;
+            }
+
+            .modal-content {
+                position: relative;
+                background-color: #fefefe;
+                margin: auto;
+                margin-top: 100px;
+                padding: 0;
+                border: 1px solid #888;
+                border-radius: 15px;
+                width: 30%;
+                box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+                animation-name: animatetop;
+                animation-duration: 0.4s;
+            }
+
+            @keyframes animatetop {
+                from {top: -300px; opacity: 0}
+                to {top: 0; opacity: 1}
+            }
+
+            form button {
+                margin-top: 10px;
+            }
+
+        </style>
+    </head>
+    <body>
+        <h1>Jeu du snake</h1>
+        <canvas id="game-canvas"></canvas>
+
+        <div class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                  <h2>Fin de la partie !</h2>
+                </div>
+                <div class="modal-body">
+                  <p>Votre score est de : <span id="score"></span></p>
+                  <form method="POST" action="">
+                    <label for="name">Rentrez votre nom : </label><input type="text" name="name" id="name">
+                    <input id="input-score" type="hidden" name="score">
+                    <br>
+                    <button type="submit">Confirmer</button>
+                  </form>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const canvas = document.getElementById("game-canvas");
+            const context = canvas.getContext("2d");
+
+            canvas.width = 800;
+            canvas.height = 600;
+
+            let frames = 0;
+
+            let point = 0;
+            let playing = true;
+
+            let foodEaten = false;
+
+            const direction = {
+                current : 0,
+                idle : 0,
+                right : 1,
+                down : 2,
+                left : 3,
+                up : 4
+            }
+
+            function gameOver() {
+                playing = false;
+                document.getElementsByClassName("modal")[0].style.display = "block";
+                document.getElementById("score").innerHTML = point;
+                document.getElementById("input-score").value = point;
+            }
+
+            document.addEventListener("keydown", function(evt){
+                switch(evt.keyCode){
+                    case 37:
+                        // flèche de gauche
+                        if(direction.current != direction.left && direction.current != direction.right) direction.current = direction.left;
+                        break;
+                    case 38:
+                        // flèche du haut
+                        if(direction.current != direction.up && direction.current != direction.down) direction.current = direction.up;
+                        break;
+                    case 39:
+                        // flèche de droite
+                        if(direction.current != direction.right && direction.current != direction.left) direction.current = direction.right;
+                        break;
+                    case 40:
+                        // flèche du bas
+                        if(direction.current != direction.down && direction.current != direction.up) direction.current = direction.down;
+                        break;
+                }
+            });
+
+            const food = {
+                x : canvas.width/4 - (canvas.width/4 % 20),
+                y : canvas.height/4 - (canvas.height/4 % 20),
+                size : 20,
+
+                draw : function() {
+                    context.beginPath();
+                    context.fillStyle = "red";
+                    context.fillRect(this.x, this.y, this.size, this.size);
+                    context.fill();
+                    context.closePath();
+                }  
+            }
+            const snake = {
+                size : 20,
+                position : [
+                    { 
+                        x : Math.floor(canvas.width/2) - (Math.floor(canvas.width/2) % 20), 
+                        y : Math.floor(canvas.height/2) - (Math.floor(canvas.height/2) % 20)
+                    }
+                ],
+
+                draw : function() {
+                    context.fillStyle = "black";
+                    for( let i = 0; i< this.position.length; i++){
+                        let p = this.position[i];
+                        context.beginPath();
+                        context.fillRect(p.x, p.y, this.size, this.size);
+                        context.fill();
+                        context.closePath();
+                    }
+                },
+
+                update : function() {
+                    if(frames % 6 == 0) {
+                        if(foodEaten == true) {
+
+                            this.position.push({
+                                x : this.position[this.position.length -1].x,
+                                y : this.position[this.position.length -1].y                   
+                            });
+                            foodEaten = false;
+                        }
+                        
+                        if((this.position[0].x < 0) || ((this.position[0].x + this.size) > canvas.width) || (this.position[0].y < 0) || ((this.position[0].y + this.size) > canvas.height)) {
+                            gameOver();
+                            return;
+                        }
+
+                        for( let i = this.position.length-1; i > 0;  i--){
+                                if(this.position[0].x == this.position[i].x && this.position[0].y == this.position[i].y && this.position.length > 2) {
+                                    gameOver();
+                                    return;
+                                }
+                                this.position[i].x = this.position[i-1].x; 
+                                this.position[i].y = this.position[i-1].y;
+                                
+                            }
+                        if(direction.current == direction.right) {
+                            this.position[0].x += this.size;
+                        }
+                        if(direction.current == direction.left) {
+                            this.position[0].x -= this.size;
+                        }
+                        if(direction.current == direction.up) {
+                            this.position[0].y -= this.size;
+                        }
+                        if(direction.current == direction.down) {
+                            this.position[0].y += this.size;
+                        }; 
+                        if(food.x == this.position[0].x && food.y == this.position[0].y) {
+                            food.x = Math.floor(Math.random() * canvas.width);
+                            food.y = Math.floor(Math.random() * canvas.height);
+                            food.x -= (food.x % 20);
+                            food.y -= (food.y % 20);
+                            foodEaten = true;
+                            point++;
+                        }
+                    }
+
+                }
+            }
+
+            function main() {
+                if(playing) {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    snake.update();
+                    snake.draw();
+                    food.draw();
+                    frames++;
+                    requestAnimationFrame(main);
+                }
+            }
+            requestAnimationFrame(main);
+        </script>
+    </body>
+</html>

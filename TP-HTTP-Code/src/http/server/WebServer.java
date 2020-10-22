@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -143,6 +144,9 @@ public class WebServer {
           case "HEAD":
             HEADRequest(path, remote);
             break;
+          case "POST":
+            POSTRequest(path, body, remote);
+            break;
           default:
             // Pour les méthodes non implémentées
             sendResponse(remote, "501 Not Implemented", null, null, null, method);
@@ -195,7 +199,7 @@ public class WebServer {
     BufferedOutputStream buffOut = new BufferedOutputStream(client.getOutputStream());
 
     pwOut.println("HTTP/1.1 " + status);
-    if (requestType.equals("GET") || (requestType.equals("HEAD") && content != null)) {
+    if (requestType.equals("GET") || (requestType.equals("HEAD") && content != null) || (requestType.equals("POST") && !status.equals("303 See Other"))) {
       pwOut.println("ContentType: " + contentType);
       pwOut.println("Content-Encoding: UTF-8");
       pwOut.println("Content-Length: " + content.length);
@@ -203,12 +207,15 @@ public class WebServer {
     if (requestType.equals("PUT")) {
       pwOut.println("Content-Location: " + contentLocation);
     }
+    if (requestType.equals("POST") && status.equals("303 See Other")) {
+      pwOut.println("Location: " + contentLocation);
+    }
     pwOut.println("Server: WebServer Java (Killian)");
     pwOut.println("Connection: close");
     pwOut.println("");
     pwOut.flush();
 
-    if (requestType.equals("GET")) {
+    if (requestType.equals("GET") || (requestType.equals("POST") && !status.equals("303 See Other"))) {
       buffOut.write(content, 0, content.length);
       buffOut.flush();
     }
@@ -331,6 +338,42 @@ public class WebServer {
             // Le fichier n'existe pas : 404
             sendResponse(client, "404 Not Found", null, null, null, "HEAD");
         }
+    }
+  }
+
+  private static String formatNumber(int n) {
+    return n < 10 ? ("0" + n) : Integer.toString(n);
+  }
+
+  private static void savePlayerScore(String name, int score) {
+    Path filePath = getFilePath("/scores.txt");
+    File fileToPut = filePath.toFile();
+    try {
+      FileWriter fWriter = new FileWriter(fileToPut.getAbsolutePath(), true);
+      Date today = new Date();
+      String newContent = "[" + today.getDate() + "/" + (today.getMonth() + 1) + "/" + (today.getYear() + 1900);
+      newContent += " - " + formatNumber(today.getHours()) + "h" + formatNumber(today.getMinutes()) + "] ";
+      newContent += name + " : " + score + "\n";
+      fWriter.append(newContent);
+      fWriter.flush();
+      fWriter.close();
+    } catch (IOException e) {
+      System.out.println("Error in savePlayerScore : " + e);
+    }
+  }
+
+  private static void POSTRequest(String path, String body, Socket client) throws IOException {
+    switch(path) {
+      case "/snake.html":
+        String[] infos = body.split("&");
+        String playerName = infos[0].substring(5);
+        int playerScore = Integer.parseInt(infos[1].substring(6));
+        savePlayerScore(playerName, playerScore);
+        sendResponse(client, "303 See Other", null, null, "/", "POST");
+      default:
+        String methodNotAllowed = "<html><body><h1>Method POST not allowed on this ressource</h1></body></html>";
+        sendResponse(client, "405 Method Not Allowed", "text/html", methodNotAllowed.getBytes(), null, "POST");
+        break;
     }
   }
   
