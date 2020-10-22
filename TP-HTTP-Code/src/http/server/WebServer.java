@@ -188,12 +188,12 @@ public class WebServer {
   }
 
   /**
-   * Envoyie la réponse au client suite à sa requête.
-   * @param client Le client visé.
+   * Envoie la réponse au client suite à sa requête.
+   * @param client Le client (socket) visé.
    * @param status Le code de retour HTTP.
    * @param contentType Le type de la réponse.
    * @param content Le corps de la réponse.
-   * @param contentLocation L'emplacement de la ressource.
+   * @param contentLocation L'emplacement de la ressource (si besoin).
    * @param requestType Le type de requête.
    * @throws IOException
    */
@@ -211,6 +211,7 @@ public class WebServer {
       pwOut.println("Content-Location: " + contentLocation);
     }
     if (requestType.equals("POST") && status.equals("303 See Other")) {
+      // Redirection
       pwOut.println("Location: " + contentLocation);
     }
     pwOut.println("Server: WebServer Java (Killian)");
@@ -227,7 +228,7 @@ public class WebServer {
   /**
    * Méthode qui permet d'effectuer une requête HTTP GET.
    * @param path Le chemin de la ressource visée.
-   * @param client Le client effectuant la demande.
+   * @param client Le client (socket) effectuant la demande.
    * @throws IOException
    */
   protected static void GETRequest(String path, Socket client) throws IOException {
@@ -260,7 +261,7 @@ public class WebServer {
   /**
    * Méthode qui permet d'effectuer une requête HTTP DELETE.
    * @param path Le chemin de la ressource à supprimer.
-   * @param client Le client effectuant la demande.
+   * @param client Le client (socket) effectuant la demande.
    * @throws IOException
    */
   protected static void DELETERequest(String path, Socket client) throws IOException {
@@ -286,7 +287,7 @@ public class WebServer {
    * Méthode qui permet d'effectuer une requête HTTP PUT.
    * @param path Le chemin de la ressource à modifer/créer.
    * @param newContent Le nouveau contenu.
-   * @param client Le client effectuant la demande.
+   * @param client Le client (socket) effectuant la demande.
    * @throws IOException
    */
   protected static void PUTRequest(String path, String newContent, Socket client) throws IOException {
@@ -315,7 +316,7 @@ public class WebServer {
   /**
    * Méthode qui permet d'effectuer une requête HTTP HEAD.
    * @param path Le chemin de la ressource visée.
-   * @param client Le client effectuant la demande.
+   * @param client Le client (socket) effectuant la demande.
    * @throws IOException
    */
   protected static void HEADRequest(String path, Socket client) throws IOException {
@@ -343,15 +344,28 @@ public class WebServer {
     }
   }
 
+  /**
+   * Permet de formatter les nombres pour que leur représentation
+   * contienne toujours au moins 2 digits (ex : 9 devient 09).
+   * @param n Le nombre a formatter.
+   * @return La représentation du nombre avec au moins 2 digits.
+   */
   protected static String formatNumber(int n) {
     return n < 10 ? ("0" + n) : Integer.toString(n);
   }
 
+  /**
+   * Permet d'écrire dans le fichier des scores (pour le jeu du snake) un nouveau
+   * score d'un joueur.
+   * @param name Le nom du joueur.
+   * @param score Le score du joueur.
+   */
   protected static void savePlayerScore(String name, int score) {
     Path filePath = getFilePath("/scores.txt");
     File fileToPut = filePath.toFile();
     try {
       FileWriter fWriter = new FileWriter(fileToPut.getAbsolutePath(), true);
+      // Avec le nom et le score on écrit également la date
       Date today = new Date();
       String newContent = "[" + today.getDate() + "/" + (today.getMonth() + 1) + "/" + (today.getYear() + 1900);
       newContent += " - " + formatNumber(today.getHours()) + "h" + formatNumber(today.getMinutes()) + "] ";
@@ -364,6 +378,13 @@ public class WebServer {
     }
   }
 
+  /**
+   * Méthode qui permet d'effectuer une requête HTTP POST.
+   * @param path La ressource visée.
+   * @param body Le corps de la requête.
+   * @param client Le client (socket) effectuant la demande.
+   * @throws IOException
+   */
   protected static void POSTRequest(String path, String body, Socket client) throws IOException {
     switch(path) {
       case "/snake.html":
