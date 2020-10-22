@@ -92,7 +92,7 @@ public class WebServer {
 
         if (request.isBlank() || request == null) {
           remote.close();
-          return;
+          continue;
         }
 
         String[] requestSplit = request.split("\r\n");
@@ -222,7 +222,6 @@ public class WebServer {
       buffOut.write(content, 0, content.length);
       buffOut.flush();
     }
-    client.close();
   }
   
   /**
