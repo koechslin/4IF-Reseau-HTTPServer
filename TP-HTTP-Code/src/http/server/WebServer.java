@@ -170,7 +170,7 @@ public class WebServer {
    * @return Le type de contenu du fichier.
    * @throws IOException
    */
-  private static String guessContentType(Path filePath) throws IOException {
+  protected static String guessContentType(Path filePath) throws IOException {
     return Files.probeContentType(filePath);
   }
 
@@ -180,7 +180,7 @@ public class WebServer {
    * @param path Le chemin de la ressource récupéré dans la requête.
    * @return Le chemin (sur le serveur) vers la ressource cherchée.
    */
-  private static Path getFilePath(String path) {
+  protected static Path getFilePath(String path) {
     if ("/".equals(path)) {
         return Paths.get("/");
     }
@@ -197,7 +197,7 @@ public class WebServer {
    * @param requestType Le type de requête.
    * @throws IOException
    */
-  private static void sendResponse(Socket client, String status, String contentType, byte[] content, String contentLocation, String requestType) throws IOException {
+  protected static void sendResponse(Socket client, String status, String contentType, byte[] content, String contentLocation, String requestType) throws IOException {
     PrintWriter pwOut = new PrintWriter(client.getOutputStream());
     BufferedOutputStream buffOut = new BufferedOutputStream(client.getOutputStream());
 
@@ -230,7 +230,7 @@ public class WebServer {
    * @param client Le client effectuant la demande.
    * @throws IOException
    */
-  private static void GETRequest(String path, Socket client) throws IOException {
+  protected static void GETRequest(String path, Socket client) throws IOException {
 
     if (path.equals("/")) {
       // Liste toutes les ressources
@@ -263,7 +263,7 @@ public class WebServer {
    * @param client Le client effectuant la demande.
    * @throws IOException
    */
-  private static void DELETERequest(String path, Socket client) throws IOException {
+  protected static void DELETERequest(String path, Socket client) throws IOException {
 
     Path filePath = getFilePath(path);
 
@@ -289,7 +289,7 @@ public class WebServer {
    * @param client Le client effectuant la demande.
    * @throws IOException
    */
-  private static void PUTRequest(String path,String newContent,Socket client) throws IOException {
+  protected static void PUTRequest(String path, String newContent, Socket client) throws IOException {
 
     Path filePath = getFilePath(path);
     String statusCode = "";
@@ -318,7 +318,7 @@ public class WebServer {
    * @param client Le client effectuant la demande.
    * @throws IOException
    */
-  private static void HEADRequest(String path, Socket client) throws IOException {
+  protected static void HEADRequest(String path, Socket client) throws IOException {
     // Méthode similaire à GETRequest, mais on n'envoie pas le body
     if (path.equals("/")) {
       String res = "<h1>Liste des ressources : </h1><ul>";
@@ -343,11 +343,11 @@ public class WebServer {
     }
   }
 
-  private static String formatNumber(int n) {
+  protected static String formatNumber(int n) {
     return n < 10 ? ("0" + n) : Integer.toString(n);
   }
 
-  private static void savePlayerScore(String name, int score) {
+  protected static void savePlayerScore(String name, int score) {
     Path filePath = getFilePath("/scores.txt");
     File fileToPut = filePath.toFile();
     try {
@@ -364,7 +364,7 @@ public class WebServer {
     }
   }
 
-  private static void POSTRequest(String path, String body, Socket client) throws IOException {
+  protected static void POSTRequest(String path, String body, Socket client) throws IOException {
     switch(path) {
       case "/snake.html":
         String[] infos = body.split("&");
