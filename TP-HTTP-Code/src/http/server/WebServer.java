@@ -102,6 +102,9 @@ public class WebServer {
         String version = requestLine[2];
         String host = requestSplit[1].split(" ")[1];
 
+        // Affichage du log des requêtes
+        System.out.println("["+ (new Date()) + "] " + remote.getInetAddress().getHostAddress() + " : " + method + " " + path );
+
         List<String> headers = new ArrayList<String>();
         for (int h = 2; h < requestSplit.length; h++) {
           String header = requestSplit[h];
