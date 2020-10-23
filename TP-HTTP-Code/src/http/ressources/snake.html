@@ -69,11 +69,58 @@
                 margin-top: 10px;
             }
 
+            #top-scores {
+                position: fixed;
+                top: 30%;
+                left: 50px;
+                text-align: left;
+                font-size: 2em;
+            }
+
+            table {
+                padding: 10px;
+                border-collapse: collapse;
+            }
+            th, td {
+                padding: 10px;
+                border: 1px solid black;
+                border-collapse: collapse;
+            }
+            thead tr:first-of-type th {
+                background-color: gray;
+            }
+
         </style>
     </head>
     <body>
         <h1>Jeu du snake</h1>
         <canvas id="game-canvas"></canvas>
+
+        <table id="top-scores">
+            <thead>
+                <tr>
+                    <th colspan="2">Meilleurs scores</th>
+                </tr>
+                <tr>
+                    <th>Joueur</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="name1"></td>
+                    <td id="score1"></td>
+                </tr>
+                <tr>
+                    <td id="name2"></td>
+                    <td id="score2"></td>
+                </tr>
+                <tr>
+                    <td id="name3"></td>
+                    <td id="score3"></td>
+                </tr>
+            </tbody>
+        </table>
 
         <div class="modal">
             <div class="modal-content">
@@ -113,6 +160,56 @@
                 down : 2,
                 left : 3,
                 up : 4
+            }
+
+            function displayScores() {
+                let request = new XMLHttpRequest();
+                request.open('GET',"http://localhost:3000/scores.txt");
+                request.responseType = 'text';
+                request.send();
+
+                request.onload = function() {
+                    if (request.status != 200) { 
+                        // Si le statut HTTP n'est pas 200
+                        // On affiche le statut et le message correspondant
+                        alert("Erreur " + request.status + " : " + request.statusText);
+                    } else { 
+                        let reponse = request.response;
+                        let reponseSplit = reponse.split("\n");
+                        let scores = [];
+
+                        reponseSplit.forEach(function(item) {
+                            item = item.substring(20);
+                            let line = item.split(":");
+                            if(line.length > 1) {
+                                let name = (line[0]).trim();
+                                let score = (line[1]).trim();
+                                score = parseInt(score,10);
+                                scores.push([score, name]);
+                            }
+                        });
+
+                        scores.sort(function(a, b) {
+                            return a[0] - b[0];
+                        });
+                        
+                        let score1 = scores[scores.length-1];
+                        let score2 = scores[scores.length-2];
+                        let score3 = scores[scores.length-3];
+
+                        document.getElementById("name1").innerHTML = score1[1]; 
+                        document.getElementById("score1").innerHTML = score1[0];
+                        document.getElementById("name2").innerHTML = score2[1]; 
+                        document.getElementById("score2").innerHTML = score2[0];
+                        document.getElementById("name3").innerHTML = score3[1]; 
+                        document.getElementById("score3").innerHTML = score3[0];
+                    }
+                };
+
+                // Si la requête n'a pas pu aboutir
+                request.onerror = function(){
+                    alert("Les scores n'ont pas pu être récupérés");
+                };
             }
 
             function gameOver() {
@@ -237,6 +334,7 @@
                 }
             }
             requestAnimationFrame(main);
+            displayScores();
         </script>
     </body>
 </html>
