@@ -72,9 +72,9 @@
             #top-scores {
                 position: fixed;
                 top: 30%;
-                left: 50px;
+                left: 20px;
                 text-align: left;
-                font-size: 2em;
+                font-size: 1em;
             }
 
             table {
@@ -164,7 +164,8 @@
 
             function displayScores() {
                 let request = new XMLHttpRequest();
-                request.open('GET',"http://localhost:3000/scores.txt");
+                let host = window.location.host;
+                request.open('GET',"http://" + host + "/scores.txt");
                 request.responseType = 'text';
                 request.send();
 
